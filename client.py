@@ -39,8 +39,9 @@ WAIT    = 5
 
 #Actives ALE (impulsive trigger)
 def aleOn():
-	GPIO.output(ALE, GPIO.HIGH)
-	GPIO.output(ALE, GPIO.LOW)
+    GPIO.output(ALE, GPIO.HIGH)
+    time.sleep(0.002)
+    GPIO.output(ALE, GPIO.LOW)
 
 # Read value from the port already set with setPort
 def read():
