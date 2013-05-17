@@ -40,7 +40,7 @@ WAIT    = 5
 #Actives ALE (impulsive trigger)
 def aleOn():
     GPIO.output(ALE, GPIO.HIGH)
-    time.sleep(0.002)
+    time.sleep(0.001)
     GPIO.output(ALE, GPIO.LOW)
 
 # Read value from the port already set with setPort
@@ -55,7 +55,7 @@ def pulse():
     print "[PULSE] Pulse sent"
     GPIO.setup(MUXIO, GPIO.OUT)
     GPIO.output(MUXIO, GPIO.HIGH)
-    time.sleep(0.01)
+    time.sleep(0.001)
     GPIO.output(MUXIO, GPIO.LOW)
     
 # Function to generate a random MID
@@ -65,12 +65,11 @@ def generateMID():
 # Converts port's address from dec to bin and set the GPIO to the
 # right logical level, then activates ALE
 def setPort(port):
-    print "[SET] Port %s" % port
     port = int(port)        # We need an integer for binary conversion
-    portb = bin(port)       # Binary conversion...
-    portb = portb.zfill(4)  # Makes a 4 digits binary number
-                            # (Fills with zeros if needed)
-                            
+    portb = '{:04b}'.format(port)       # Binary conversion...
+                                       # 4 digits (Fills with zeros if needed)
+    print "[SET] Port %d (%s)" % (port, portb)
+         
 	# D -> MSB
     if portb[0] == "1":
     	GPIO.output(21,GPIO.HIGH)
@@ -134,7 +133,7 @@ while 1:
             # The house is not configured
             print "[WARNING] House not configured"
             print MID # Shows the MID!
-            print "I will check again in 10 seconds"
+            print "I will check again in 10 seconds..."
             time.sleep(10)
             
         else:
@@ -146,8 +145,9 @@ while 1:
             
     except:
         # If URL fetching has failed, maybe there is no connection...
-        print "No internet connection"
-        print sys.exc_info()[0]
+        print "[ERROR] No internet connection"
+        print "I will try connecting again in 5 seconds..."
+        time.sleep(5)
 
 
 #infinite loop
