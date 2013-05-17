@@ -1,9 +1,9 @@
-#Libraries
-import RPi.GPIO as GPIO
-import urllib2
-import time
-import json
-import random
+# Importing libraries 
+import RPi.GPIO as GPIO # GPIO
+import urllib2          # urllib2
+import time             # Timing
+import json             # JSON
+import random           # Random functions
 
 #Setting up GPIO notation
 GPIO.setmode(GPIO.BCM)
