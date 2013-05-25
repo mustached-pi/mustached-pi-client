@@ -42,6 +42,17 @@ def aleOn():
     GPIO.output(ALE, GPIO.HIGH)
     time.sleep(0.001)
     GPIO.output(ALE, GPIO.LOW)
+    time.sleep(0.005)
+    GPIO.output(ALE, GPIO.HIGH)
+    time.sleep(0.001)
+    GPIO.output(ALE, GPIO.LOW)
+
+# Speaks out loud
+def speak(what):
+    print "[SPEAK] %s" % (what)
+    file = open("/home/pi/share/voice", "w")
+    file.write(what)
+    file.close()
 
 # Read value from the port already set with setPort
 def read():
@@ -53,6 +64,7 @@ def read():
 # Creates an pulse signal to MUX's out, to change flip flop state
 def pulse():
     print "[PULSE] Pulse sent"
+    speak("Switching port")
     GPIO.setup(MUXIO, GPIO.OUT)
     GPIO.output(MUXIO, GPIO.HIGH)
     time.sleep(0.001)
@@ -69,7 +81,6 @@ def setPort(port):
     portb = '{:04b}'.format(port)       # Binary conversion...
                                        # 4 digits (Fills with zeros if needed)
     print "[SET] Port %d (%s)" % (port, portb)
-         
 	# D -> MSB
     if portb[0] == "1":
     	GPIO.output(21,GPIO.HIGH)
@@ -102,17 +113,18 @@ GPIO.setup(21, GPIO.OUT) # D -> MSB
 # Now remember setting the ADDRESS LATCH ENABLE as output
 GPIO.setup(ALE, GPIO.OUT)
 
-
+# Wait five seconds before doing anything
+time.sleep(5)
 
 # Try reading the Machine code
 try:
-    fi   = open('MID', 'r')
+    fi   = open('/home/pi/share/MID', 'r')
     MID  = fi.read()
     fi.close()
    
 except IOError:
     # If not, create a new one
-    fi   = open('MID',  'w+')
+    fi   = open('/home/pi/share/MID',  'w+')
     MID = generateMID()
     fi.write(MID)
     fi.close()
@@ -131,6 +143,7 @@ while 1:
         
         if arrayconf["house"] is False:
             # The house is not configured
+            speak("House code is " + MID)
             print "[WARNING] House not configured"
             print MID # Shows the MID!
             print "I will check again in 10 seconds..."
@@ -141,12 +154,14 @@ while 1:
             print "[OK] House configuration found!"
             print arrayconf["house"]["name"]
             print arrayconf["house"]["address"]
+            speak("House configuration found")
             break; # Exit from the while!
             
     except:
         # If URL fetching has failed, maybe there is no connection...
         print "[ERROR] No internet connection"
         print "I will try connecting again in 5 seconds..."
+        speak("No internet connection")
         time.sleep(5)
 
 
@@ -155,45 +170,55 @@ while 1:
 #Loop -> changes the switch value if different from the previous configuration
 #     -> saves values from sensors
 
-	# Creates new dictionary to collect sensor data
-	arrayread = {}
+    # Creates new dictionary to collect sensor data
+    arrayread = {}
     
-	# For each configured port from the server
-	for (port, value) in arrayconf['ports'].iteritems():
+    # For each configured port from the server
+    for (port, value) in arrayconf['ports'].iteritems():
         # Where:
         #  port     is the port number
         #  value -> {dictionary}
         #   value.type  is the port type ("input"/"output")
         #   value.value is the port value (0 or 1, only output case)
         
-		# Setting up MUX port
-		setPort(port)
+    	# Setting up MUX port
+    	setPort(port)
         
-		# Case output port
-		if value["type"]=="output":
-			if value["value"]!=arrayprec.get(port, 0):
-				pulse()
-				arrayprec[port]=value["value"]
+    	# Case output port
+    	if value["type"]=="output":
+    		if value["value"]!=arrayprec.get(port, 0):
+    			pulse()
+    			arrayprec[port]=value["value"]
                 
-		# Case input/sensor port
-		if value["type"]=="input":
-			arrayread[port]=read()
-			temp = random.randint(0,255)
-			arrayread[port]=temp
-
-	# Converts the array into JSON
-	arrayread = {'sid': MID, 'ports': arrayread}
-	arrayread = json.dumps(arrayread)
+    	# Case input/sensor port
+    	if value["type"]=="input":
+    		arrayread[port]=read()
+    		temp = random.randint(0,255)
+    		arrayread[port]=temp
     
-	# Sends everything to the server
-	f = urllib2.urlopen( BASEURL + '/endpoint.php',arrayread)
+    # Converts the array into JSON
+    arrayread = {'sid': MID, 'ports': arrayread}
+    arrayread = json.dumps(arrayread)
     
-	# Reads the HTTP response for the next loop
-	arrayconf = f.read()
-	# print arrayconf # DEBUG
+    try:
+        # Sends everything to the server
+        f = urllib2.urlopen( BASEURL + '/endpoint.php',arrayread)
+        # Reads the HTTP response for the next loop
+        arrayconf = f.read()
+        
+    except:
+        # NO INTERNET CONNECTION
+        print "[ERROR] Internet connection not working"
+        speak("Internet connection not working. Firing alarm in 15 seconds")
+        print "[NOTICE] 15 seconds of inactivity will fire the alarm"
+        print "Trying again in 5 seconds..."
+        time.sleep(5)
+        continue # Try again with the next request...
     
-	# Decode JSON response into a dictionary
-	arrayconf=json.loads(arrayconf)
+    # print arrayconf # DEBUG
     
-	# Now wait before looping again
-	time.sleep(WAIT)
+    # Decode JSON response into a dictionary
+    arrayconf=json.loads(arrayconf)
+    
+    # Now wait before looping again
+    time.sleep(WAIT)
